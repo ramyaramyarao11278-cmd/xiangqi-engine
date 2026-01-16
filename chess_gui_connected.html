@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国象棋 - AI 对弈 (联网版)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .board-wrapper {
+            background: linear-gradient(145deg, #d4a574, #c4956a);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(9, 60px);
+            grid-template-rows: repeat(10, 60px);
+            background: #e8c889;
+            border: 3px solid #8b4513;
+            position: relative;
+        }
+
+        .river-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #8b4513;
+            letter-spacing: 20px;
+            z-index: 10;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .cell::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 1px solid #8b4513;
+        }
+
+        .piece {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 20;
+        }
+
+        .piece.red {
+            background: linear-gradient(145deg, #fff5e6, #f5e0c3);
+            color: #c41e3a;
+            border: 3px solid #c41e3a;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .piece.black {
+            background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
+            color: #ffd700;
+            border: 3px solid #333;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .piece:hover {
+            transform: scale(1.1);
+        }
+
+        .piece.selected {
+            transform: scale(1.15);
+            box-shadow: 0 0 20px #ffd700;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px #ffd700;
+            }
+
+            50% {
+                box-shadow: 0 0 30px #ffa500;
+            }
+        }
+
+        .cell.highlight {
+            background: rgba(255, 215, 0, 0.4);
+        }
+
+        .cell.last-move {
+            background: rgba(0, 255, 0, 0.2);
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            color: white;
+            min-width: 280px;
+        }
+
+        .control-panel h2 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-align: center;
+            color: #ffd700;
+        }
+
+        .status {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status .turn {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .status .info {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .status .score {
+            font-size: 16px;
+            color: #4caf50;
+            margin-top: 10px;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #ffd700, #ffa500);
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .move-history {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .move-history h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #ffd700;
+        }
+
+        .move-list {
+            font-size: 14px;
+            color: #ddd;
+        }
+
+        .thinking {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffd700;
+            margin-top: 10px;
+        }
+
+        .thinking-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ffd700;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .connected {
+            color: #4caf50;
+        }
+
+        .disconnected {
+            color: #f44336;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="board-wrapper">
+            <div class="board" id="board">
+                <div class="river-text">楚河　　　汉界</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h2>🏯 中国象棋 AI</h2>
+
+            <div class="status">
+                <div id="connection" class="disconnected">⚪ 连接中...</div>
+                <div class="turn" id="turn">红方走棋</div>
+                <div class="info" id="info">点击棋子开始</div>
+                <div class="score" id="score"></div>
+            </div>
+
+            <div class="buttons">
+                <button class="btn-primary" onclick="newGame()">新局</button>
+                <button class="btn-secondary" onclick="undoMove()">悔棋</button>
+                <button class="btn-secondary" id="aiBtn" onclick="requestAIMove()">🤖 AI 走棋</button>
+                <button class="btn-secondary" onclick="toggleAutoAI()">
+                    <span id="ai-toggle">开启 AI 自动</span>
+                </button>
+            </div>
+
+            <div id="thinking" class="thinking" style="display: none;">
+                <div class="thinking-spinner"></div>
+                <span>AI 深度思考中...</span>
+            </div>
+
+            <div class="move-history">
+                <h3>📜 走法记录</h3>
+                <div class="move-list" id="moves"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+
+        const PIECES = {
+            1: { name: '帅', color: 'red' },
+            2: { name: '仕', color: 'red' },
+            3: { name: '相', color: 'red' },
+            4: { name: '马', color: 'red' },
+            5: { name: '车', color: 'red' },
+            6: { name: '炮', color: 'red' },
+            7: { name: '兵', color: 'red' },
+            8: { name: '将', color: 'black' },
+            9: { name: '士', color: 'black' },
+            10: { name: '象', color: 'black' },
+            11: { name: '马', color: 'black' },
+            12: { name: '车', color: 'black' },
+            13: { name: '炮', color: 'black' },
+            14: { name: '卒', color: 'black' }
+        };
+
+        const INIT_BOARD = [
+            [12, 11, 10, 9, 8, 9, 10, 11, 12],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 13, 0, 0, 0, 0, 0, 13, 0],
+            [14, 0, 14, 0, 14, 0, 14, 0, 14],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [7, 0, 7, 0, 7, 0, 7, 0, 7],
+            [0, 6, 0, 0, 0, 0, 0, 6, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [5, 4, 3, 2, 1, 2, 3, 4, 5]
+        ];
+
+        let board = JSON.parse(JSON.stringify(INIT_BOARD));
+        let currentPlayer = 1; // 1=red, -1=black
+        let selectedPiece = null;
+        let moveHistory = [];
+        let autoAI = false;
+        let isThinking = false;
+        let connected = false;
+
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '<div class="river-text">楚河　　　汉界</div>';
+
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => handleClick(row, col);
+
+                    const piece = board[row][col];
+                    if (piece > 0) {
+                        const pieceEl = document.createElement('div');
+                        const p = PIECES[piece];
+                        pieceEl.className = `piece ${p.color}`;
+                        pieceEl.textContent = p.name;
+                        cell.appendChild(pieceEl);
+                    }
+
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function handleClick(row, col) {
+            if (isThinking) return;
+
+            const piece = board[row][col];
+
+            if (selectedPiece) {
+                if (canMove(selectedPiece.row, selectedPiece.col, row, col)) {
+                    makeMove(selectedPiece.row, selectedPiece.col, row, col);
+                    clearSelection();
+
+                    if (autoAI && currentPlayer === -1) {
+                        setTimeout(requestAIMove, 300);
+                    }
+                } else {
+                    clearSelection();
+                    if (piece > 0 && getPieceColor(piece) === currentPlayer) {
+                        selectPiece(row, col);
+                    }
+                }
+            } else {
+                if (piece > 0 && getPieceColor(piece) === currentPlayer) {
+                    selectPiece(row, col);
+                }
+            }
+        }
+
+        function selectPiece(row, col) {
+            selectedPiece = { row, col };
+            const cells = document.querySelectorAll('.cell');
+            cells[row * 9 + col].querySelector('.piece').classList.add('selected');
+        }
+
+        function clearSelection() {
+            selectedPiece = null;
+            document.querySelectorAll('.piece.selected').forEach(p => p.classList.remove('selected'));
+            document.querySelectorAll('.cell.highlight').forEach(c => c.classList.remove('highlight'));
+        }
+
+        function getPieceColor(piece) {
+            if (piece >= 1 && piece <= 7) return 1;
+            if (piece >= 8 && piece <= 14) return -1;
+            return 0;
+        }
+
+        function canMove(fromRow, fromCol, toRow, toCol) {
+            const piece = board[fromRow][fromCol];
+            const target = board[toRow][toCol];
+
+            // 不能吃己方棋子
+            if (target > 0 && getPieceColor(target) === getPieceColor(piece)) return false;
+            // 不能原地不动
+            if (fromRow === toRow && fromCol === toCol) return false;
+
+            const pieceType = piece <= 7 ? piece : piece - 7; // 1-7
+            const isRed = piece <= 7;
+
+            switch (pieceType) {
+                case 1: // 帅/将
+                    return canMoveKing(fromRow, fromCol, toRow, toCol, isRed);
+                case 2: // 仕/士
+                    return canMoveAdvisor(fromRow, fromCol, toRow, toCol, isRed);
+                case 3: // 相/象
+                    return canMoveBishop(fromRow, fromCol, toRow, toCol, isRed);
+                case 4: // 马
+                    return canMoveKnight(fromRow, fromCol, toRow, toCol);
+                case 5: // 车
+                    return canMoveRook(fromRow, fromCol, toRow, toCol);
+                case 6: // 炮
+                    return canMoveCannon(fromRow, fromCol, toRow, toCol);
+                case 7: // 兵/卒
+                    return canMovePawn(fromRow, fromCol, toRow, toCol, isRed);
+                default:
+                    return false;
+            }
+        }
+
+        function canMoveKing(fr, fc, tr, tc, isRed) {
+            // 九宫范围
+            const minRow = isRed ? 7 : 0;
+            const maxRow = isRed ? 9 : 2;
+            if (tr < minRow || tr > maxRow || tc < 3 || tc > 5) return false;
+
+            // 只能走一步
+            const dr = Math.abs(tr - fr);
+            const dc = Math.abs(tc - fc);
+            return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+        }
+
+        function canMoveAdvisor(fr, fc, tr, tc, isRed) {
+            // 九宫范围
+            const minRow = isRed ? 7 : 0;
+            const maxRow = isRed ? 9 : 2;
+            if (tr < minRow || tr > maxRow || tc < 3 || tc > 5) return false;
+
+            // 斜走一步
+            return Math.abs(tr - fr) === 1 && Math.abs(tc - fc) === 1;
+        }
+
+        function canMoveBishop(fr, fc, tr, tc, isRed) {
+            // 不过河
+            if (isRed && tr < 5) return false;
+            if (!isRed && tr > 4) return false;
+
+            // 田字
+            if (Math.abs(tr - fr) !== 2 || Math.abs(tc - fc) !== 2) return false;
+
+            // 象眼不能被塞
+            const eyeRow = (fr + tr) / 2;
+            const eyeCol = (fc + tc) / 2;
+            return board[eyeRow][eyeCol] === 0;
+        }
+
+        function canMoveKnight(fr, fc, tr, tc) {
+            const dr = tr - fr;
+            const dc = tc - fc;
+
+            // 日字
+            if (!((Math.abs(dr) === 2 && Math.abs(dc) === 1) ||
+                (Math.abs(dr) === 1 && Math.abs(dc) === 2))) {
+                return false;
+            }
+
+            // 蹩马腿
+            let legRow, legCol;
+            if (Math.abs(dr) === 2) {
+                legRow = fr + (dr > 0 ? 1 : -1);
+                legCol = fc;
+            } else {
+                legRow = fr;
+                legCol = fc + (dc > 0 ? 1 : -1);
+            }
+            return board[legRow][legCol] === 0;
+        }
+
+        function canMoveRook(fr, fc, tr, tc) {
+            // 直线
+            if (fr !== tr && fc !== tc) return false;
+
+            // 路径无阻挡
+            if (fr === tr) {
+                const minC = Math.min(fc, tc);
+                const maxC = Math.max(fc, tc);
+                for (let c = minC + 1; c < maxC; c++) {
+                    if (board[fr][c] !== 0) return false;
+                }
+            } else {
+                const minR = Math.min(fr, tr);
+                const maxR = Math.max(fr, tr);
+                for (let r = minR + 1; r < maxR; r++) {
+                    if (board[r][fc] !== 0) return false;
+                }
+            }
+            return true;
+        }
+
+        function canMoveCannon(fr, fc, tr, tc) {
+            // 直线
+            if (fr !== tr && fc !== tc) return false;
+
+            const target = board[tr][tc];
+            let count = 0;
+
+            if (fr === tr) {
+                const minC = Math.min(fc, tc);
+                const maxC = Math.max(fc, tc);
+                for (let c = minC + 1; c < maxC; c++) {
+                    if (board[fr][c] !== 0) count++;
+                }
+            } else {
+                const minR = Math.min(fr, tr);
+                const maxR = Math.max(fr, tr);
+                for (let r = minR + 1; r < maxR; r++) {
+                    if (board[r][fc] !== 0) count++;
+                }
+            }
+
+            // 不吃子时无阻挡，吃子时翻一个
+            if (target === 0) return count === 0;
+            return count === 1;
+        }
+
+        function canMovePawn(fr, fc, tr, tc, isRed) {
+            const dr = tr - fr;
+            const dc = tc - fc;
+
+            if (isRed) {
+                // 红兵向上
+                if (fr > 4) {
+                    // 未过河，只能向前
+                    return dr === -1 && dc === 0;
+                } else {
+                    // 过河后可横走
+                    return (dr === -1 && dc === 0) || (dr === 0 && Math.abs(dc) === 1);
+                }
+            } else {
+                // 黑卒向下
+                if (fr < 5) {
+                    return dr === 1 && dc === 0;
+                } else {
+                    return (dr === 1 && dc === 0) || (dr === 0 && Math.abs(dc) === 1);
+                }
+            }
+        }
+
+        function makeMove(fromRow, fromCol, toRow, toCol) {
+            const captured = board[toRow][toCol];
+            const piece = board[fromRow][fromCol];
+
+            moveHistory.push({
+                from: { row: fromRow, col: fromCol },
+                to: { row: toRow, col: toCol },
+                piece, captured
+            });
+
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = 0;
+            currentPlayer = currentPlayer === 1 ? -1 : 1;
+
+            renderBoard();
+            updateStatus();
+            updateMoveList();
+            highlightLastMove(fromRow, fromCol, toRow, toCol);
+        }
+
+        function highlightLastMove(fr, fc, tr, tc) {
+            const cells = document.querySelectorAll('.cell');
+            cells[fr * 9 + fc].classList.add('last-move');
+            cells[tr * 9 + tc].classList.add('last-move');
+        }
+
+        function updateStatus() {
+            document.getElementById('turn').textContent =
+                currentPlayer === 1 ? '🔴 红方走棋' : '⚫ 黑方走棋';
+        }
+
+        function updateMoveList() {
+            const list = document.getElementById('moves');
+            const moves = moveHistory.map((m, i) => {
+                const p = PIECES[m.piece].name;
+                const from = `${String.fromCharCode(97 + m.from.col)}${9 - m.from.row}`;
+                const to = `${String.fromCharCode(97 + m.to.col)}${9 - m.to.row}`;
+                return `${i + 1}. ${p} ${from}→${to}`;
+            });
+            list.innerHTML = moves.join('<br>');
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function newGame() {
+            board = JSON.parse(JSON.stringify(INIT_BOARD));
+            currentPlayer = 1;
+            selectedPiece = null;
+            moveHistory = [];
+            renderBoard();
+            updateStatus();
+            document.getElementById('moves').innerHTML = '';
+            document.getElementById('info').textContent = '新局开始！';
+            document.getElementById('score').textContent = '';
+        }
+
+        function undoMove() {
+            if (moveHistory.length === 0) return;
+            const last = moveHistory.pop();
+            board[last.from.row][last.from.col] = last.piece;
+            board[last.to.row][last.to.col] = last.captured;
+            currentPlayer = currentPlayer === 1 ? -1 : 1;
+            renderBoard();
+            updateStatus();
+            updateMoveList();
+        }
+
+        async function requestAIMove() {
+            if (isThinking) return;
+
+            isThinking = true;
+            document.getElementById('thinking').style.display = 'flex';
+            document.getElementById('aiBtn').disabled = true;
+            document.getElementById('info').textContent = 'AI 深度思考中...';
+
+            try {
+                const boardJson = encodeURIComponent(JSON.stringify(board));
+                const url = `${API_BASE}/best_move?board=${boardJson}&player=${currentPlayer}&depth=4&time=3000`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.success) {
+                    makeMove(data.from_row, data.from_col, data.to_row, data.to_col);
+                    document.getElementById('info').textContent = 'AI 已走棋';
+                    document.getElementById('score').textContent = `评估: ${data.score > 0 ? '+' : ''}${data.score}`;
+
+                    if (autoAI && currentPlayer === -1) {
+                        setTimeout(requestAIMove, 300);
+                    }
+                } else {
+                    document.getElementById('info').textContent = 'AI 无法走棋';
+                }
+            } catch (e) {
+                document.getElementById('info').textContent = '连接失败: ' + e.message;
+                connected = false;
+                updateConnectionStatus();
+            }
+
+            isThinking = false;
+            document.getElementById('thinking').style.display = 'none';
+            document.getElementById('aiBtn').disabled = false;
+        }
+
+        function toggleAutoAI() {
+            autoAI = !autoAI;
+            document.getElementById('ai-toggle').textContent =
+                autoAI ? '关闭 AI 自动' : '开启 AI 自动';
+
+            if (autoAI && currentPlayer === -1) {
+                requestAIMove();
+            }
+        }
+
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                connected = response.ok;
+            } catch {
+                connected = false;
+            }
+            updateConnectionStatus();
+        }
+
+        function updateConnectionStatus() {
+            const el = document.getElementById('connection');
+            if (connected) {
+                el.textContent = '🟢 AI 已连接';
+                el.className = 'connected';
+            } else {
+                el.textContent = '🔴 AI 未连接 (启动 chess_server.py)';
+                el.className = 'disconnected';
+            }
+        }
+
+        // 初始化
+        renderBoard();
+        updateStatus();
+        checkConnection();
+        setInterval(checkConnection, 5000);
+    </script>
+</body>
+
+</html>
